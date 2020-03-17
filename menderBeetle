@@ -64,14 +64,14 @@ const fetchJSON = async (jsonUrl) => {
         if (res.charCodeAt(i) > 127) {
           --len
           res = res.substr(0,i) + res.substr(i+1)
-          if (!warningFlag) {
-            Log.e(chalk`\n{red.bold WARNING!}\n{yellow unicode char found at the following indices:}`)
-            warningFlag = true
-          }
+          warningFlag = !warningFlag ? true : warningFlag
           unicodeIndices.push(i)
         }
       }
-      Log.i(unicodeIndices, '\n')
+      if (!warningFlag) {
+        Log.e(chalk`\n{red.bold WARNING!}\n{yellow unicode char found at the following indices:}`)
+        Log.i(unicodeIndices, '\n')
+      }
       json = res
     })
     .catch(err => {
