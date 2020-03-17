@@ -14,7 +14,6 @@ const Log = {
 }
 
 // configurable sources
-let EXIT_CODE = 0
 const WORKERS = []
 const JSON_FILES = [{title: 'Load from URL...', value: '/URL/'}]
 
@@ -48,7 +47,6 @@ const fileFinder = async (dirName, isJSON) => {
     })
     .catch(err => {
       Log.e(chalk`\n{red.bold Error!!}\n{yellow ${err}}\n`)
-      terminate(EXIT_CODE)
     })
   return result
 }
@@ -138,6 +136,8 @@ const setup = async () => {
 }
 
 (async function () {
+  let EXIT_CODE = 0
+  
   try {
     ++EXIT_CODE
     const OPTIONS = await setup()
