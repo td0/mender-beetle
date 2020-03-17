@@ -34,7 +34,8 @@ const fileFinder = async (dirName, isJSON) => {
     .then(files => {
       files = files.filter(file => file.match(pattern))
       if (files.length === 0) {
-        return Promise.reject('No object worker available!')
+        if (isJSON) result = []
+        else return Promise.reject('No object worker available!')
       } else {
         const list = []
         files.forEach(file => {
@@ -117,7 +118,7 @@ const setupPrompt = async () => {
       type: prev => prev === '/URL/' ? 'text' : false,
       name: 'fileUrl',
       message: 'Enter JSON URL:',
-      validate: val => val && validateUrl(val) ? 'Please input the URL properly' : true,
+      validate: val => val && validateUrl(val) ? true : 'Please input the URL properly',
     }, {
       type: 'select',
       name: 'objWorker',
@@ -143,7 +144,7 @@ const setupPrompt = async () => {
   try {
     ++EXIT_CODE
     JSON_FILES.push(...await fileFinder('json', true))
-    
+
     ++EXIT_CODE
     WORKERS.push(...await fileFinder('objectWorkers'))
 
