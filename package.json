@@ -4,9 +4,7 @@
   "description": "mend your messed up JSON structure",
   "main": "menderBeetle",
   "dependencies": {
-    "node-fetch": "^2.6.0"
-  },
-  "devDependencies": {
+    "node-fetch": "^2.6.0",
     "chalk": "^3.0.0",
     "prompts": "^2.3.1",
     "request": "^2.88.2"
