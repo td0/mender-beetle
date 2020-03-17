@@ -143,6 +143,7 @@ const setupPrompt = async () => {
   try {
     ++EXIT_CODE
     JSON_FILES.push(...await fileFinder('json', true))
+    
     ++EXIT_CODE
     WORKERS.push(...await fileFinder('objectWorkers'))
 
@@ -150,8 +151,7 @@ const setupPrompt = async () => {
     const OPTIONS = await setupPrompt()
     !OPTIONS && terminate(EXIT_CODE)
     
-    EXIT_CODE = 20
-    ++EXIT_CODE
+    EXIT_CODE = 21
     const json = OPTIONS.fileUrl 
       ? await fetchJSON(OPTIONS.fileUrl) 
       : require(`./json/${OPTIONS.fileSrc}`)
