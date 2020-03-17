@@ -21,6 +21,8 @@ npm i
 
 
 ### How To Use
+![DEMO](demo/demo.gif)
+
 - (OPTIONAL) make an object-worker script and save it in `/objectWorkers` directory (just take alook at the existing sample) don't omit the `.js` extension!! (Do whatever the fck u want with your JSON there)
 - (ALSO OPTIONAL) put your source JSON file that u want to mend inside `/json` directory, and put `.json` extension there so the app can find the file automatically (no you can't set the source by typing it manually, follow the rules John!)
 - run `./menderBeetle`
