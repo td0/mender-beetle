@@ -138,18 +138,18 @@ const setup = async () => {
 }
 
 (async function () {
-  ++EXIT_CODE
-  const OPTIONS = await setup()
-  !OPTIONS && terminate(EXIT_CODE)
-  
-  ++EXIT_CODE
-  const json = OPTIONS.fileUrl 
-    ? await fetchJSON(OPTIONS.fileUrl) 
-    : require(`./json/${OPTIONS.fileSrc}`)
-  !json && terminate(EXIT_CODE)
-  
-  EXIT_CODE = 20
   try {
+    ++EXIT_CODE
+    const OPTIONS = await setup()
+    !OPTIONS && terminate(EXIT_CODE)
+    
+    ++EXIT_CODE
+    const json = OPTIONS.fileUrl 
+      ? await fetchJSON(OPTIONS.fileUrl) 
+      : require(`./json/${OPTIONS.fileSrc}`)
+    !json && terminate(EXIT_CODE)
+
+    EXIT_CODE = 20
     ++EXIT_CODE
     const objWorker = require(`./objectWorkers/${OPTIONS.objWorker}`)
     ++EXIT_CODE
