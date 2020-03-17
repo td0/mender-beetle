@@ -96,7 +96,7 @@ const generateJsonFile = (fileName, obj, minify = true) => {
   
   fs.writeFile(`${outputDir}${fileName}`, str, function(err){
     if (!err){
-      Log.i(chalk`{green File successfully written!\nCheck your project directory for the} {yellow.underline "${fileName}"}\n`);
+      Log.i(chalk`{green File has been successfully written!\nFile location:} {yellow.underline "output-json/${fileName}"}\n`);
     } else {
         process.stdout.write('\033[<2>B'+err);
     }
@@ -125,6 +125,11 @@ const setup = async () => {
       message: 'Pick and Object Worker:',
       instructions: false,
       choices: WORKERS,
+    }, {
+      type: 'confirm',
+      name: 'minifyOutput',
+      message: 'Minify JSON output?',
+      initial: true,
     }])
     Log.i()
     return options.fileSrc && options.objWorker ? options : false
@@ -136,7 +141,6 @@ const setup = async () => {
 
 (async function () {
   let EXIT_CODE = 0
-
   try {
     ++EXIT_CODE
     const OPTIONS = await setup()
@@ -156,7 +160,7 @@ const setup = async () => {
     ++EXIT_CODE
     const outputFile = `${generateFileName(OPTIONS.fileSrc)}`
     ++EXIT_CODE
-    generateJsonFile(outputFile, obj, false)
+    generateJsonFile(outputFile, obj, OPTIONS.minifyOutput)
   } catch (err) {
     Log.e(chalk`{red ${err}}`)
     terminate(EXIT_CODE)
