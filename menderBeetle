@@ -103,12 +103,11 @@ const generateJsonFile = (fileName, obj, minify = true) => {
   });
 }
 
-const validate = val => val === '' ? 'Please input properly' : true
 
 const setup = async () => {
   JSON_FILES.push(...await fileFinder('json', true))
   WORKERS.push(...await fileFinder('objectWorkers'))
-
+  
   try{ 
     const options = await prompts([{
       type: 'autocomplete',
@@ -119,7 +118,7 @@ const setup = async () => {
       type: prev => prev === '/URL/' ? 'text' : false,
       name: 'fileUrl',
       message: 'Enter JSON URL:',
-      validate,
+      validate: val => val === '' ? 'Please input properly' : true,
     }, {
       type: 'select',
       name: 'objWorker',
@@ -137,7 +136,7 @@ const setup = async () => {
 
 (async function () {
   let EXIT_CODE = 0
-  
+
   try {
     ++EXIT_CODE
     const OPTIONS = await setup()
