@@ -77,14 +77,15 @@ const fetchJSON = async (jsonUrl) => {
     .catch(err => {
       Log.e(chalk`\n{red.bold JSON Fetch Error}\n{yellow ${err}}`)
     })
-  return json
+  return JSON.parse(json)
 }
 
 const generateFileName = (str) => {
   if (str.indexOf('http') > -1) {
     const splitted = str.split('/')
     const len = splitted.length
-    return `${splitted[len-1]}`
+    const name = splitted[len-1] || 'output.json'
+    return name.match(/([a-zA-Z0-9\s_\\.\-\(\):])+(.json)$/i) ? name : name+'.json'
   } else {
     return `${str.replace('/', '')}`
   }
@@ -99,7 +100,7 @@ const generateJsonFile = (fileName, obj, minify = true) => {
     if (!err){
       Log.i(chalk`{green File has been successfully written!\nFile location:} {yellow.underline "output-json/${fileName}"}\n`);
     } else {
-        process.stdout.write('\033[<2>B'+err);
+      Log.e(chalk`\n{red.bold Error while writing the file!}\n{yellow ${err}}`);
     }
   });
 }
@@ -163,7 +164,7 @@ const setupPrompt = async () => {
     ++EXIT_CODE
     const obj = objWorker(json)
     ++EXIT_CODE
-    const outputFile = `${generateFileName(OPTIONS.fileSrc)}`
+    const outputFile = `${generateFileName(OPTIONS.fileUrl || OPTIONS.fileSrc)}`
     ++EXIT_CODE
     generateJsonFile(outputFile, obj, OPTIONS.minifyOutput)
   } catch (err) {
