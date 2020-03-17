@@ -15,34 +15,47 @@ const Log = {
 
 // configurable sources
 let EXIT_CODE = 0
-let OPTIONS = {}
 const WORKERS = []
+const JSON_FILES = [{title: 'Load from URL...', value: '/URL/'}]
 
-const getWorkerList = async () => {
-  let success = false
-  const directoryPath = path.join(__dirname, 'objectWorkers')
-  const pattern = /([a-zA-Z0-9\s_\\.\-\(\):])+(.js|.Js|.JS|.jS)$/i
+const terminate = (code = 99) => {
+  const error = code < 20 ? 'Setup failed' : 'Runtime error'
+  Log.e(chalk`\n{red.bold ${error}, shutting down} {yellow (${code})}`)
+  process.exit(0)
+}
+
+const fileFinder = async (dirName, isJSON) => {
+  const pattern = isJSON 
+    ? /([a-zA-Z0-9\s_\\.\-\(\):])+(.json)$/i 
+    : /([a-zA-Z0-9\s_\\.\-\(\):])+(.js)$/i
+  const directoryPath = path.join(__dirname, dirName)
+  
+  let result = false
   await util.promisify(fs.readdir)(directoryPath)
     .then(files => {
       files = files.filter(file => file.match(pattern))
       if (files.length === 0) {
         return Promise.reject('No object worker available!')
       } else {
+        const list = []
         files.forEach(file => {
-          const title = file.split('.').slice(0, -1).join('.')
+          const title = file
           const value = file
-          WORKERS.push({title, value})
+          list.push({title, value})
         })
-        success = WORKERS.length > 0 ? true : false
+        result = list.length > 0 ? list : false
       }
     })
-    .catch(err => Log.e(chalk`{red.bold Error!!}\n{yellow ${err}}\n`))
-  return success
+    .catch(err => {
+      Log.e(chalk`\n{red.bold Error!!}\n{yellow ${err}}\n`)
+      terminate(EXIT_CODE)
+    })
+  return result
 }
 
-const fetchJSON = async () => {
+const fetchJSON = async (jsonUrl) => {
   let json
-  await fetch(OPTIONS.fileSrc, { method: "Get" })
+  await fetch(jsonUrl, { method: "Get" })
     .then(res => res.text())
     .then(res => {
       let len = res.length
@@ -63,7 +76,7 @@ const fetchJSON = async () => {
       json = res
     })
     .catch(err => {
-      Log.e(chalk`{red.bold JSON Fetch Error}\n{yellow ${err}}`)
+      Log.e(chalk`\n{red.bold JSON Fetch Error}\n{yellow ${err}}`)
     })
   return json
 }
@@ -92,14 +105,23 @@ const generateJsonFile = (fileName, obj, minify = true) => {
   });
 }
 
-const setup = async () => {
-  if (!(await getWorkerList())) return false
+const validate = val => val === '' ? 'Please input properly' : true
 
-  try{
-    OPTIONS = await prompts([{
-      type: 'text',
+const setup = async () => {
+  JSON_FILES.push(...await fileFinder('json', true))
+  WORKERS.push(...await fileFinder('objectWorkers'))
+
+  try{ 
+    const options = await prompts([{
+      type: 'autocomplete',
       name: 'fileSrc',
       message: 'Enter file source:',
+      choices: JSON_FILES,
+    }, {
+      type: prev => prev === '/URL/' ? 'text' : false,
+      name: 'fileUrl',
+      message: 'Enter JSON URL:',
+      validate,
     }, {
       type: 'select',
       name: 'objWorker',
@@ -108,26 +130,22 @@ const setup = async () => {
       choices: WORKERS,
     }])
     Log.i()
-    return OPTIONS.fileSrc && OPTIONS.objWorker ? true : false
+    return options.fileSrc && options.objWorker ? options : false
   } catch (err) {
     Log.e(chalk`{red Prompter failed: ${err}}`)
     return false
   }
 }
 
-const terminate = (code = 99) => {
-  const error = code < 20 ? 'Setup failed' : 'Runtime error'
-  Log.e(chalk`\n{red.bold ${error}, shutting down} {yellow (${code})}`)
-  process.exit(0)
-}
-
 (async function () {
   ++EXIT_CODE
-  const success = await setup()
-  !success && terminate(EXIT_CODE)
+  const OPTIONS = await setup()
+  !OPTIONS && terminate(EXIT_CODE)
   
   ++EXIT_CODE
-  const json = await fetchJSON()
+  const json = OPTIONS.fileUrl 
+    ? await fetchJSON(OPTIONS.fileUrl) 
+    : require(`./json/${OPTIONS.fileSrc}`)
   !json && terminate(EXIT_CODE)
   
   EXIT_CODE = 20
