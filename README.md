@@ -1,13 +1,13 @@
 # mender-beetle
 [![License: WTFPL](https://img.shields.io/badge/License-WTFPL-brightgreen.svg)](http://www.wtfpl.net/about/)
 
-Mend your broken and ugly and stupid JSON structure, so you'd feel better :)
+Mend your broken and ugly and stupid JSON structure, and you feel better :)
 
 
 ### Requirements
-- A working PC / laptop with Unix or Unix like environment (FCK WINDOWS)
+- A working PC / laptop with Unix or Unix-like environment (fck windows)
 - NodeJS version 8 or later
-- Relatively healthy and sane hooman brain
+- Relatively healthy and sane human brain
 
 
 ### How To Setup
@@ -21,9 +21,11 @@ npm i
 
 
 ### How To Use
-- (OPTIONAL) make an object-worker and save it in `/objectWorkers` directory (just take alook at the existing one) with `.js` extension!! (Do whatever the fck u need there)
+- (OPTIONAL) make an object-worker script and save it in `/objectWorkers` directory (just take alook at the existing sample) don't omit the `.js` extension!! (Do whatever the fck u want with your JSON there)
+- (ALSO OPTIONAL) put your source JSON file that u want to mend inside `/json` directory, and put `.json` extension there so the app can find the file automatically (no you can't set the source by typing it manually, follow the rules John!)
 - run `./menderBeetle`
-- enter your source JSON file URL
+- pick your source JSON file -**OR**- choose `Load from URL` if you want to load the JSON from remote URL
 - pick a worker (the app will automagically list all object-worker files inside the `/objectWorkers` directory)
-- if you chose a correct worker, it will generate the output file in `/output-json` directory with the same name as the source JSON
+- press `n` if u don't wanna minify the JSON output, **OR** simply press enter
+- if you picked a correct worker, it will generate the output file in `/output-json` directory with the same name as the source JSON
 - EN-fcking-JOY!!
