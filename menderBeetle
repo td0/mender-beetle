@@ -104,10 +104,7 @@ const generateJsonFile = (fileName, obj, minify = true) => {
 }
 
 
-const setup = async () => {
-  JSON_FILES.push(...await fileFinder('json', true))
-  WORKERS.push(...await fileFinder('objectWorkers'))
-  
+const setupPrompt = async () => {
   try{ 
     const options = await prompts([{
       type: 'autocomplete',
@@ -143,16 +140,21 @@ const setup = async () => {
   let EXIT_CODE = 0
   try {
     ++EXIT_CODE
-    const OPTIONS = await setup()
+    JSON_FILES.push(...await fileFinder('json', true))
+    ++EXIT_CODE
+    WORKERS.push(...await fileFinder('objectWorkers'))
+
+    ++EXIT_CODE
+    const OPTIONS = await setupPrompt()
     !OPTIONS && terminate(EXIT_CODE)
     
+    EXIT_CODE = 20
     ++EXIT_CODE
     const json = OPTIONS.fileUrl 
       ? await fetchJSON(OPTIONS.fileUrl) 
       : require(`./json/${OPTIONS.fileSrc}`)
     !json && terminate(EXIT_CODE)
 
-    EXIT_CODE = 20
     ++EXIT_CODE
     const objWorker = require(`./objectWorkers/${OPTIONS.objWorker}`)
     ++EXIT_CODE
