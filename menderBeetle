@@ -1,0 +1,147 @@
+#!/usr/bin/env node
+const fs = require('fs')
+const path = require('path')
+const util = require('util')
+const fetch = require('node-fetch')
+const chalk = require('chalk')
+const prompts = require('prompts')
+const Log = {
+  d: console.debug,
+  e: console.error,
+  l: console.log,
+  i: console.info,
+  w: console.warn,
+}
+
+// configurable sources
+let EXIT_CODE = 0
+let OPTIONS = {}
+const WORKERS = []
+
+const getWorkerList = async () => {
+  let success = false
+  const directoryPath = path.join(__dirname, 'objectWorkers')
+  const pattern = /([a-zA-Z0-9\s_\\.\-\(\):])+(.js|.Js|.JS|.jS)$/i
+  await util.promisify(fs.readdir)(directoryPath)
+    .then(files => {
+      files = files.filter(file => file.match(pattern))
+      if (files.length === 0) {
+        return Promise.reject('No object worker available!')
+      } else {
+        files.forEach(file => {
+          const title = file.split('.').slice(0, -1).join('.')
+          const value = file
+          WORKERS.push({title, value})
+        })
+        success = WORKERS.length > 0 ? true : false
+      }
+    })
+    .catch(err => Log.e(chalk`{red.bold Error!!}\n{yellow ${err}}\n`))
+  return success
+}
+
+const fetchJSON = async () => {
+  let json
+  await fetch(OPTIONS.fileSrc, { method: "Get" })
+    .then(res => res.text())
+    .then(res => {
+      let len = res.length
+      let warningFlag = false
+      let unicodeIndices = []
+      for (let i = 0; i < len; ++i) {
+        if (res.charCodeAt(i) > 127) {
+          --len
+          res = res.substr(0,i) + res.substr(i+1)
+          if (!warningFlag) {
+            Log.e(chalk`\n{red.bold WARNING!}\n{yellow unicode char found at the following indices:}`)
+            warningFlag = true
+          }
+          unicodeIndices.push(i)
+        }
+      }
+      Log.i(unicodeIndices, '\n')
+      json = res
+    })
+    .catch(err => {
+      Log.e(chalk`{red.bold JSON Fetch Error}\n{yellow ${err}}`)
+    })
+  return json
+}
+
+const generateFileName = (str) => {
+  if (str.indexOf('http') > -1) {
+    const splitted = str.split('/')
+    const len = splitted.length
+    return `${splitted[len-1]}`
+  } else {
+    return `${str.replace('/', '')}`
+  }
+}
+
+const generateJsonFile = (fileName, obj, minify = true) => {
+  const str = minify ? JSON.stringify(obj) : JSON.stringify(obj, null, 2)
+  const outputDir = './output-json/'
+  if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir);
+  
+  fs.writeFile(`${outputDir}${fileName}`, str, function(err){
+    if (!err){
+      Log.i(chalk`{green File successfully written!\nCheck your project directory for the} {yellow.underline "${fileName}"}\n`);
+    } else {
+        process.stdout.write('\033[<2>B'+err);
+    }
+  });
+}
+
+const setup = async () => {
+  if (!(await getWorkerList())) return false
+
+  try{
+    OPTIONS = await prompts([{
+      type: 'text',
+      name: 'fileSrc',
+      message: 'Enter file source:',
+    }, {
+      type: 'select',
+      name: 'objWorker',
+      message: 'Pick and Object Worker:',
+      instructions: false,
+      choices: WORKERS,
+    }])
+    Log.i()
+    return OPTIONS.fileSrc && OPTIONS.objWorker ? true : false
+  } catch (err) {
+    Log.e(chalk`{red Prompter failed: ${err}}`)
+    return false
+  }
+}
+
+const terminate = (code = 99) => {
+  const error = code < 20 ? 'Setup failed' : 'Runtime error'
+  Log.e(chalk`\n{red.bold ${error}, shutting down} {yellow (${code})}`)
+  process.exit(0)
+}
+
+(async function () {
+  ++EXIT_CODE
+  const success = await setup()
+  !success && terminate(EXIT_CODE)
+  
+  ++EXIT_CODE
+  const json = await fetchJSON()
+  !json && terminate(EXIT_CODE)
+  
+  EXIT_CODE = 20
+  try {
+    ++EXIT_CODE
+    const objWorker = require(`./objectWorkers/${OPTIONS.objWorker}`)
+    ++EXIT_CODE
+    const obj = objWorker(json)
+    ++EXIT_CODE
+    const outputFile = `${generateFileName(OPTIONS.fileSrc)}`
+    ++EXIT_CODE
+    generateJsonFile(outputFile, obj, false)
+  } catch (err) {
+    Log.e(chalk`{red ${err}}`)
+    terminate(EXIT_CODE)
+  }
+})()

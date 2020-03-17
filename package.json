@@ -1,0 +1,20 @@
+{
+  "name": "mender-beetle",
+  "version": "1.0.0",
+  "description": "mend your messed up JSON structure",
+  "main": "menderBeetle",
+  "dependencies": {
+    "node-fetch": "^2.6.0"
+  },
+  "devDependencies": {
+    "chalk": "^3.0.0",
+    "prompts": "^2.3.1",
+    "request": "^2.88.2"
+  },
+  "scripts": {
+    "start": "./menderBeetle",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "td0",
+  "license": "WTFPL"
+}
