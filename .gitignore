@@ -22,9 +22,14 @@ Session.vim
 *.log
 *.log.2017*
 npm-debug.log*
+output
 output-json
 node_modules
 json/*.json
+sourceData/*.json
+sourceData/*.csv
+dataRefs/*.json
+dataRefs/*.csv
 objectWorkers/**
 !objectWorkers/sample_worker.js
 package-lock.json
