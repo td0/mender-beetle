@@ -23,10 +23,12 @@ const terminate = (code = 99) => {
   process.exit(0)
 }
 
+const isCsv = (fileName) => /^.*\.csv$/.test(fileName)
+
 const fileFinder = async (dirName, isJSON) => {
   const pattern = isJSON 
-    ? /([a-zA-Z0-9\s_\\.\-\(\):])+(.json)$/i 
-    : /([a-zA-Z0-9\s_\\.\-\(\):])+(.js)$/i
+    ? /([a-zA-Z0-9\s_\\.\-\(\):])+(\.json|\.csv)$/i 
+    : /([a-zA-Z0-9\s_\\.\-\(\):])+(\.js)$/i
   const directoryPath = path.join(__dirname, dirName)
   
   let result = false
@@ -50,6 +52,21 @@ const fileFinder = async (dirName, isJSON) => {
       Log.e(chalk`\n{red.bold Error!!}\n{yellow ${err}}\n`)
     })
   return result
+}
+
+const parseCsv = (filePath, EXIT_CODE) => {
+  try {
+    const csv = require('csv-string')
+    const fileData = fs.readFileSync(`./sourceData/${filePath}`, 'utf-8')
+    return {
+      delimiter: csv.detect(fileData),
+      object: csv.parse(fileData, { output: 'objects' })
+    }
+  } catch (err)  {
+    Log.e(chalk`{red parseCsv error}`)
+    Log.e(err)
+    terminate(EXIT_CODE)
+  }
 }
 
 const fetchJSON = async (jsonUrl) => {
@@ -91,24 +108,24 @@ const generateFileName = (str) => {
   }
 }
 
-const generateJsonFile = (fileName, obj, minify = true) => {
-  const str = minify ? JSON.stringify(obj) : JSON.stringify(obj, null, 2)
-  const outputDir = './output-json/'
+const generateFile = async (fileName, data, opt = {}) => {
+  const {
+    minify = true,
+    isCsv = false
+  } = opt
+  const str = isCsv ? data : minify ? JSON.stringify(data) : JSON.stringify(data, null, 2)
+  const outputDir = './output/'
   if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir);
-  
-  fs.writeFile(`${outputDir}${fileName}`, str, function(err){
-    if (!err){
-      Log.i(chalk`{green File has been successfully written!\nFile location:} {yellow.underline "output-json/${fileName}"}\n`);
-    } else {
-      Log.e(chalk`\n{red.bold Error while writing the file!}\n{yellow ${err}}`);
-    }
-  });
+  try {
+    await fs.promises.writeFile(`${outputDir}${fileName}`, str, 'utf8')
+    Log.i(chalk`{green File has been successfully written!\nFile location:} {yellow.underline "output/${fileName}"}\n`)
+  } catch(err) {
+    Log.e(chalk`\n{red.bold Error while writing the file!}\n{yellow ${err}}`);
+  }
 }
-
 
 const setupPrompt = async () => {
   const validateUrl = val => /^(?:(?:(?:https?|ftp):)?\/\/)(?:\S+(?::\S*)?@)?(?:(?!(?:10|127)(?:\.\d{1,3}){3})(?!(?:169\.254|192\.168)(?:\.\d{1,3}){2})(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[1-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(?:(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)(?:\.(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)*(?:\.(?:[a-z\u00a1-\uffff]{2,})))(?::\d{2,5})?(?:[/?#]\S*)?$/i.test(val)
-
   try{ 
     const options = await prompts([{
       type: 'autocomplete',
@@ -123,19 +140,23 @@ const setupPrompt = async () => {
     }, {
       type: 'select',
       name: 'objWorker',
-      message: 'Pick and Object Worker:',
+      message: 'Pick an Object Worker:',
       instructions: false,
       choices: WORKERS,
     }, {
-      type: 'confirm',
+      type: (_, values) => !isCsv(values.fileSrc) ? 'confirm' : null,
       name: 'minifyOutput',
       message: 'Minify JSON output?',
       initial: true,
+    }, {
+      type: (_, values) => isCsv(values.fileSrc) ? 'confirm' : null,
+      name: 'jsonOutput',
+      message: 'Convert the result to JSON?',
+      initial: false,
     }])
-    Log.i()
     return options.fileSrc && options.objWorker ? options : false
   } catch (err) {
-    Log.e(chalk`{red Prompter failed: ${err}}`)
+    Log.e(chalk`{rednPrompter failed: ${err}}`)
     return false
   }
 }
@@ -144,7 +165,7 @@ const setupPrompt = async () => {
   let EXIT_CODE = 0
   try {
     ++EXIT_CODE
-    JSON_FILES.push(...await fileFinder('json', true))
+    JSON_FILES.push(...await fileFinder('sourceData', true))
 
     ++EXIT_CODE
     WORKERS.push(...await fileFinder('objectWorkers'))
@@ -152,21 +173,49 @@ const setupPrompt = async () => {
     ++EXIT_CODE
     const OPTIONS = await setupPrompt()
     !OPTIONS && terminate(EXIT_CODE)
-    
+    const IS_CSV = isCsv(OPTIONS?.fileSrc)
+
     EXIT_CODE = 21
-    const json = OPTIONS.fileUrl 
-      ? await fetchJSON(OPTIONS.fileUrl) 
-      : require(`./json/${OPTIONS.fileSrc}`)
-    !json && terminate(EXIT_CODE)
+    let sourceData
+    let csvDelimiter = ','
+    ++EXIT_CODE
+    if (IS_CSV) {
+      Log.i(chalk`{yellow Converting .csv to .json}`)
+      const { delimiter, object } = parseCsv(OPTIONS.fileSrc, EXIT_CODE)
+      csvDelimiter = delimiter
+      sourceData = object
+    } else {
+      ++EXIT_CODE
+      sourceData = OPTIONS.fileUrl 
+        ? await fetchJSON(OPTIONS.fileUrl) 
+        : require(`./sourceData/${OPTIONS.fileSrc}`)
+    }
+    !sourceData && terminate(EXIT_CODE)
 
     ++EXIT_CODE
     const objWorker = require(`./objectWorkers/${OPTIONS.objWorker}`)
     ++EXIT_CODE
-    const obj = objWorker(json)
+    let result = objWorker(sourceData)
     ++EXIT_CODE
+
     const outputFile = `${generateFileName(OPTIONS.fileUrl || OPTIONS.fileSrc)}`
+
     ++EXIT_CODE
-    generateJsonFile(outputFile, obj, OPTIONS.minifyOutput)
+    if (IS_CSV && !OPTIONS.jsonOutput) {
+      Log.i(chalk`{yellow Reverting .json to .csv}`)
+      const Parser = require('@json2csv/plainjs').Parser
+      const parser = new Parser({
+        delimiter: csvDelimiter,
+        eol: '\r\n',
+        includeEmptyRows: true
+      })
+      result = parser.parse(result)
+    }
+
+    await generateFile(outputFile, result, {
+      minify: OPTIONS.minifyOutput,
+      isCsv: IS_CSV && !OPTIONS.jsonOutput
+    })
   } catch (err) {
     Log.e(chalk`{red ${err}}`)
     terminate(EXIT_CODE)
