@@ -156,8 +156,52 @@ const setupPrompt = async () => {
     }])
     return options.fileSrc && options.objWorker ? options : false
   } catch (err) {
+    Log.e(chalk`{red Prompter failed: ${err}}`)
+    return false
+  }
+}
+
+const postProcessingPrompt = async () => {
+  try{ 
+    return await prompts([{
+      type: 'autocomplete',
+      name: 'splitType',
+      message: 'Split CSV file?',
+      choices: [
+        {title: 'no', value: 'no'},
+        {title: 'based on file size', value: 'size'},
+        {title: 'based on file count', value: 'count'}
+      ],
+    }, {
+      type: (_, values) => values.splitType === 'size' ? 'number': null,
+      name: 'splitSize',
+      message: 'How much the maximum file size? (in KB)',
+      initial: 20,
+      min: 20,
+    }, {
+      type: (_, values) => values.splitType === 'count' ? 'number' : null,
+      name: 'splitSize',
+      message: 'How much files you want to split into?',
+      initial: 5,
+      min: 2,
+      max: 20
+    }])
+  } catch (err) {
     Log.e(chalk`{rednPrompter failed: ${err}}`)
     return false
+  }
+}
+
+const postProcessing = async (file, opt = {}) => {
+  const { isCsv, delimiter } = opt
+  if (!isCsv) return
+  const OPTIONS = await postProcessingPrompt()
+  if (OPTIONS.splitType === 'no') return
+  Log.i(chalk`{yellow Splitting files ...}`)
+  const filePath = `./output/${file}`
+  const splitter = require('./splitter')
+  if (OPTIONS.splitType === 'size') {
+    splitter(filePath, { sizeLimit: OPTIONS.splitSize })
   }
 }
 
@@ -215,6 +259,12 @@ const setupPrompt = async () => {
     await generateFile(outputFile, result, {
       minify: OPTIONS.minifyOutput,
       isCsv: IS_CSV && !OPTIONS.jsonOutput
+    })
+
+    postProcessing(outputFile, {
+      minify: OPTIONS.minifyOutput,
+      isCsv: IS_CSV && !OPTIONS.jsonOutput,
+      delimiter: csvDelimiter
     })
   } catch (err) {
     Log.e(chalk`{red ${err}}`)
