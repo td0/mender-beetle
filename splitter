@@ -25,19 +25,20 @@ const splitCsv = (filePath, opt = {}) => {
   // Keep track of the current split file content
   let currentSplitContent = header + "\n"
   // Keep track of the current split file index
-  let currentSplitIndex = 0
+  let currentSplitIndex = 1
   for (let i = 1; i < lines.length; i++) {
     // Add the current line to the current split content
     currentSplitContent += lines[i] + "\n"
     // If the current split content size exceeds the limit, write it to a new split file
     if (Buffer.byteLength(currentSplitContent) >= adjustedSplitSizeLimit) {
-      fs.writeFileSync(`${OUTPUT_FILE_PREFIX}_${++currentSplitIndex}.csv`, currentSplitContent)
+      fs.writeFileSync(`${OUTPUT_FILE_PREFIX}_part${currentSplitIndex}.csv`, currentSplitContent)
       currentSplitContent = header + "\n"
+      currentSplitIndex++
     }
   }
   // Write the remaining content to the last split file
   if (currentSplitContent) {
-    fs.writeFileSync(`${OUTPUT_FILE_PREFIX}_${currentSplitIndex}.csv`, currentSplitContent)
+    fs.writeFileSync(`${OUTPUT_FILE_PREFIX}_part${currentSplitIndex}.csv`, currentSplitContent)
   }
 }
 
