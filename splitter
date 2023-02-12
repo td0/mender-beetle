@@ -1,0 +1,66 @@
+#!/usr/bin/env node
+const fs = require("fs")
+const path = require('path')
+const yargs = require("yargs")
+
+const splitCsv = (filePath, opt = {}) => {
+  const { sizeLimit } = opt
+  // The size limit in bytes for each split file, including the header
+  const SPLIT_SIZE_LIMIT = sizeLimit * 1024
+  // The input file path
+  const INPUT_FILE_PATH = filePath
+  // The output file path prefix
+  const OUTPUT_FILE_PREFIX = path.join(
+    path.dirname(filePath),
+    `${path.parse(filePath).name}`
+  )
+  // Read the input file as a string
+  const data = fs.readFileSync(INPUT_FILE_PATH, "utf8")
+  // Split the data into an array of lines
+  const lines = data.split("\n")
+  // Get the header field from the first line
+  const header = lines[0]
+  // Decrease the SPLIT_SIZE_LIMIT by the size of the header
+  const adjustedSplitSizeLimit = SPLIT_SIZE_LIMIT - Buffer.byteLength(header + "\n")
+  // Keep track of the current split file content
+  let currentSplitContent = header + "\n"
+  // Keep track of the current split file index
+  let currentSplitIndex = 0
+  for (let i = 1; i < lines.length; i++) {
+    // Add the current line to the current split content
+    currentSplitContent += lines[i] + "\n"
+    // If the current split content size exceeds the limit, write it to a new split file
+    if (Buffer.byteLength(currentSplitContent) >= adjustedSplitSizeLimit) {
+      fs.writeFileSync(`${OUTPUT_FILE_PREFIX}_${++currentSplitIndex}.csv`, currentSplitContent)
+      currentSplitContent = header + "\n"
+    }
+  }
+  // Write the remaining content to the last split file
+  if (currentSplitContent) {
+    fs.writeFileSync(`${OUTPUT_FILE_PREFIX}_${currentSplitIndex}.csv`, currentSplitContent)
+  }
+}
+
+
+if (require.main === module) {
+  const argv = yargs
+    .options({
+      file: {
+        describe: "File path",
+        demandOption: true,
+        type: "string",
+      },
+      size: {
+        describe: "Size limit in KB",
+        demandOption: false,
+        type: "number",
+        default: 1024,
+      }
+    })
+    .help()
+    .argv
+  const { file, size } = argv
+  splitCsv(file, { sizeLimit: size })
+} else {
+  module.exports = splitCsv
+}
