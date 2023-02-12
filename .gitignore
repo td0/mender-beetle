@@ -32,4 +32,3 @@ dataRefs/*.json
 dataRefs/*.csv
 objectWorkers/**
 !objectWorkers/sample_worker.js
-package-lock.json
