@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-const fs = require("fs")
+const fs = require('fs')
 const path = require('path')
-const yargs = require("yargs")
+const yargs = require('yargs')
+
+const CARRIAGE_RETURN = '\r\n'
 
 const splitCsv = (filePath, opt = {}) => {
   const { sizeLimit } = opt
@@ -15,24 +17,24 @@ const splitCsv = (filePath, opt = {}) => {
     `${path.parse(filePath).name}`
   )
   // Read the input file as a string
-  const data = fs.readFileSync(INPUT_FILE_PATH, "utf8")
+  const data = fs.readFileSync(INPUT_FILE_PATH, 'utf8')
   // Split the data into an array of lines
-  const lines = data.split("\n")
+  const lines = data.split(CARRIAGE_RETURN)
   // Get the header field from the first line
   const header = lines[0]
   // Decrease the SPLIT_SIZE_LIMIT by the size of the header
-  const adjustedSplitSizeLimit = SPLIT_SIZE_LIMIT - Buffer.byteLength(header + "\n")
+  const adjustedSplitSizeLimit = SPLIT_SIZE_LIMIT - Buffer.byteLength(header + CARRIAGE_RETURN)
   // Keep track of the current split file content
-  let currentSplitContent = header + "\n"
+  let currentSplitContent = header + CARRIAGE_RETURN
   // Keep track of the current split file index
   let currentSplitIndex = 1
   for (let i = 1; i < lines.length; i++) {
     // Add the current line to the current split content
-    currentSplitContent += lines[i] + "\n"
+    currentSplitContent += lines[i] + CARRIAGE_RETURN
     // If the current split content size exceeds the limit, write it to a new split file
     if (Buffer.byteLength(currentSplitContent) >= adjustedSplitSizeLimit) {
       fs.writeFileSync(`${OUTPUT_FILE_PREFIX}_part${currentSplitIndex}.csv`, currentSplitContent)
-      currentSplitContent = header + "\n"
+      currentSplitContent = header + CARRIAGE_RETURN
       currentSplitIndex++
     }
   }
@@ -47,14 +49,14 @@ if (require.main === module) {
   const argv = yargs
     .options({
       file: {
-        describe: "File path",
+        describe: 'File path',
         demandOption: true,
-        type: "string",
+        type: 'string',
       },
       size: {
-        describe: "Size limit in KB",
+        describe: 'Size limit in KB',
         demandOption: false,
-        type: "number",
+        type: 'number',
         default: 1024,
       }
     })
