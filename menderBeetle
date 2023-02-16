@@ -115,6 +115,8 @@ const generateFile = async (fileName, data, opt = {}) => {
   } = opt
   const str = isCsv ? data : minify ? JSON.stringify(data) : JSON.stringify(data, null, 2)
   const outputDir = './output/'
+  const ext = isCsv ? '.csv' : '.json'
+  fileName = fileName.replace(/\.(csv|json)$/, ext)
   if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir);
   try {
     await fs.promises.writeFile(`${outputDir}${fileName}`, str, 'utf8')
