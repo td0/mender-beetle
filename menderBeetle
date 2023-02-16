@@ -25,8 +25,8 @@ const terminate = (code = 99) => {
 
 const isCsv = (fileName) => /^.*\.csv$/.test(fileName)
 
-const fileFinder = async (dirName, isJSON) => {
-  const pattern = isJSON 
+const fileFinder = async (dirName, isSourceFile) => {
+  const pattern = isSourceFile 
     ? /([a-zA-Z0-9\s_\\.\-\(\):])+(\.json|\.csv)$/i 
     : /([a-zA-Z0-9\s_\\.\-\(\):])+(\.js)$/i
   const directoryPath = path.join(__dirname, dirName)
@@ -36,7 +36,7 @@ const fileFinder = async (dirName, isJSON) => {
     .then(files => {
       files = files.filter(file => file.match(pattern))
       if (files.length === 0) {
-        if (isJSON) result = []
+        if (isSourceFile) result = []
         else return Promise.reject('No object worker available!')
       } else {
         const list = []
@@ -111,7 +111,8 @@ const generateFileName = (str) => {
 const generateFile = async (fileName, data, opt = {}) => {
   const {
     minify = true,
-    isCsv = false
+    isCsv = false,
+    length = 0
   } = opt
   const str = isCsv ? data : minify ? JSON.stringify(data) : JSON.stringify(data, null, 2)
   const outputDir = './output/'
@@ -120,7 +121,7 @@ const generateFile = async (fileName, data, opt = {}) => {
   if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir);
   try {
     await fs.promises.writeFile(`${outputDir}${fileName}`, str, 'utf8')
-    Log.i(chalk`{green File has been successfully written!\nFile location:} {yellow.underline "output/${fileName}"}\n`)
+    Log.i(chalk`{yellow ${length}} {green entries have been successfully written!\nFile location:} {yellow.underline "output/${fileName}"}\n`)
   } catch(err) {
     Log.e(chalk`\n{red.bold Error while writing the file!}\n{yellow ${err}}`);
   }
@@ -170,23 +171,30 @@ const postProcessingPrompt = async () => {
       name: 'splitType',
       message: 'Split CSV file?',
       choices: [
-        {title: 'no', value: 'no'},
-        {title: 'based on file size', value: 'size'},
-        {title: 'based on file count', value: 'count'}
+        { title: 'no', value: 'no' },
+        { title: 'based on file size', value: 'size' },
+        { title: 'based on file count', value: 'fileCount' },
+        { title: 'based on item count per file', value: 'itemCount' }
       ],
     }, {
       type: (_, values) => values.splitType === 'size' ? 'number': null,
       name: 'splitSize',
       message: 'How much the maximum file size? (in KB)',
       initial: 20,
-      min: 20,
+      min: 20
     }, {
-      type: (_, values) => values.splitType === 'count' ? 'number' : null,
+      type: (_, values) => values.splitType === 'fileCount' ? 'number' : null,
       name: 'splitSize',
-      message: 'How much files you want to split into?',
+      message: 'How much files do you want to split into?',
       initial: 5,
       min: 2,
       max: 20
+    },  {
+      type: (_, values) => values.splitType === 'itemCount' ? 'number' : null,
+      name: 'splitSize',
+      message: 'How much the max item per file?',
+      initial: 5,
+      min: 5
     }])
   } catch (err) {
     Log.e(chalk`{rednPrompter failed: ${err}}`)
@@ -203,7 +211,7 @@ const postProcessing = async (file, opt = {}) => {
   const filePath = `./output/${file}`
   const splitter = require('./splitter')
   if (OPTIONS.splitType === 'size') {
-    splitter(filePath, { sizeLimit: OPTIONS.splitSize })
+    splitter(filePath, { sizeLimit: OPTIONS.splitSize, delimiter })
   }
 }
 
@@ -241,9 +249,12 @@ const postProcessing = async (file, opt = {}) => {
     ++EXIT_CODE
     const objWorker = require(`./objectWorkers/${OPTIONS.objWorker}`)
     ++EXIT_CODE
+    Log.i(chalk`{blue \n>> [START] Worker}`)
     let result = objWorker(sourceData)
+    Log.i(chalk`{blue << [END] Worker\n}`)
     ++EXIT_CODE
-
+    
+    const itemLength = result.length
     const outputFile = `${generateFileName(OPTIONS.fileUrl || OPTIONS.fileSrc)}`
 
     ++EXIT_CODE
@@ -260,7 +271,8 @@ const postProcessing = async (file, opt = {}) => {
 
     await generateFile(outputFile, result, {
       minify: OPTIONS.minifyOutput,
-      isCsv: IS_CSV && !OPTIONS.jsonOutput
+      isCsv: IS_CSV && !OPTIONS.jsonOutput,
+      length: itemLength
     })
 
     postProcessing(outputFile, {
